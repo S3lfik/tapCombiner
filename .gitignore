@@ -1,5 +1,6 @@
 # Compiled Object files
 *.slo
+*.suo
 *.lo
 *.o
 *.obj
@@ -31,6 +32,7 @@
 # VS files
 *.sdf
 *.vcxproj*
+*.VC.*
 
 #Directories
 Release/
