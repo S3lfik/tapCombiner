@@ -1,5 +1,6 @@
 #include "TapCombiner.h"
 #include <algorithm>
+#include "ConfigReader.h"
 
 
 TapCombiner::TapCombiner()
@@ -9,6 +10,7 @@ TapCombiner::TapCombiner()
 TapCombiner::TapCombiner(const std::string& path)
 	: m_path(path)
 {
+	ConfigReader reader;
 }
 
 TapCombiner::~TapCombiner()

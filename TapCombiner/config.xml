@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config>
-<node></node>	
-</config>
+<Configs>
+	<fileSeparator val=";start#"/>
+	<topFooterSize val="3"/>
+	<botFooterSize val="3"/>
+	<topInsertionText val="11111\n22222\n33333"/>
+</Configs>
