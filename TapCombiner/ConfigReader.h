@@ -8,6 +8,11 @@ public:
 	ConfigReader();
 	~ConfigReader();
 
+	inline const int getTopFooterSize() const { return m_topFooterSize; }
+	inline const int getBotFooterSize() const { return m_botFooterSize; }
+	inline const std::string getFileSeparator() const { return m_separator; }
+	inline const std::string getTopInjectonText() const { return m_injectionText; };
+
 private:
 	void readValues();
 	void replaceNewLine(std::string& input);
