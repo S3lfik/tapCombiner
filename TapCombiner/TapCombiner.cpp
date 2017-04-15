@@ -21,7 +21,8 @@ bool TapCombiner::exec()
 {
 	try
 	{
-		initFileNames();
+		if (!readFiles())
+			return false;
 
 		combineFiles();
 	}
@@ -51,117 +52,119 @@ bool TapCombiner::exec()
 	return true;
 }
 
-void TapCombiner::initFileNames()
+bool TapCombiner::readFiles()
 {
-	if (bfs::exists(m_path))
-	{
-		if (bfs::is_directory(m_path))
-		{
-			for (bfs::directory_entry& entry : bfs::directory_iterator(m_path))
-			{
-				m_fileNames.push_back(entry.path().filename().string());
-			}
-			
-			std::sort(m_fileNames.begin(), m_fileNames.end(), compareFileNamesDesc);
+	if (!bfs::exists(m_path) || !bfs::is_directory(m_path))
+		return false;
 
-			for (auto& path : m_fileNames)
+	ConfigReader* configReader = ConfigReader::getInstance();
+
+	std::ifstream tapStream;
+
+	for (bfs::directory_entry& entry : bfs::directory_iterator(m_path))
+	{
+		TapFile tapFile;
+		int lineNumber = 0;
+		size_t minimalLineNumber = configReader->getTopFooterSize() +
+			configReader->getBotFooterSize();
+
+		tapFile.name = entry.path().filename().string();
+
+		if (std::string::npos == tapFile.name.find(FILE_TYPE))
+			continue;
+
+		tapStream.open("taps/\\" + tapFile.name, std::ifstream::in);
+
+		if (tapStream.is_open())
+		{
+			std::string bufferStr{ "" };
+
+			for (int lineIdx = 0; !tapStream.eof(); ++lineIdx)
 			{
-				std::cout << path << std::endl;
+				std::getline(tapStream, bufferStr);
+
+				if (bufferStr.empty())
+				{
+					lineIdx--;
+					continue;
+				}
+
+				tapFile.fileMapping.insert(
+					std::pair<int, std::string>(lineIdx, bufferStr));
+
+			}
+
+			tapStream.close();
+
+			if (tapFile.fileMapping.size() < minimalLineNumber)
+			{
+				std::cerr << "TapFile " << tapFile.name << " has invalid content!" << std::endl;
+				return false;
 			}
 		}
-		else
-			throw 0;
+		m_tapFiles.push_back(tapFile);
 	}
-	else
-		throw 0;
+
+	std::sort(m_tapFiles.begin(), m_tapFiles.end(), compareFilesByNameDesc);
+
+	return true;
 }
 
 void TapCombiner::combineFiles()
 {
-	/** Create resulting file stream*/
-	std::ofstream resultFile{ (m_path.string() + RESULT_FILE_NAME).c_str() };
-	bool bFooterMade = false;
-	int startLine = 3;
-	int endLine = 0;
-	int fileIndx = 1;
-	std::string bufferLine{ "" };
-	std::string fileHead{ "" };
-	std::string additionalHead{ "11111\n22222\n33333\n" };
-	bool bHasTitle = false;
+	ConfigReader* configReader = ConfigReader::getInstance();
+	std::ofstream resultFile{ (m_path.string() + '/' + RESULT_FILE_NAME).c_str(), std::ios_base::trunc };
 
-	if (!resultFile.good())
+	// Config values
+	int topFooterSize = configReader->getTopFooterSize();
+	int botFooterSize = configReader->getBotFooterSize();
+	std::string injectionText = configReader->getTopInjectonText();
+	std::string separatorText = configReader->getFileSeparator();
+	//
+	int filesCount = m_tapFiles.size();
+
+	if (!resultFile.is_open())
 		return;
 
-	for (auto& filename : m_fileNames)
+	for (int idx = 0; idx < filesCount; idx++)
 	{
+		TapFile tapFile = m_tapFiles.at(idx);
+		int linesCount = tapFile.fileMapping.size();
 
-		std::ifstream tapStream;;
-		tapStream.open("taps/\\" + filename, std::ifstream::in);
-
-		if (tapStream.is_open())
+		/** If first file - put top footer & top injection*/
+		if (idx == 0)
 		{
-			std::cout << "File: " << filename << " has " << getLinesInStream(tapStream) << " lines" << std::endl;
-			if(filename != m_fileNames.front())
-				resultFile << "start#" << fileIndx << std::endl;
+			for (int i = 0; i < topFooterSize; i++)
+				resultFile << tapFile.fileMapping.at(i) << std::endl;
 
-			endLine = getLinesInStream(tapStream) - 3;
-			for (int lineIdx = 0; !tapStream.eof(); ++lineIdx)
-			{
-				if (lineIdx == endLine && filename.compare(m_fileNames.back()))
-				{
-					break;
-				}
-				std::getline(tapStream, bufferLine);
-				// at first, write lines into title buffer
-				if (lineIdx < startLine)
-				{
-					fileHead.append(bufferLine + "\n");
-				}
-				// and then all the other lines with title at the head if none were writen already
-				else 
-				{					
-					if (!bHasTitle)
-					{
-						resultFile << fileHead;
-						resultFile << additionalHead;
-						bHasTitle = true;
-					}
-					//std::getline(tapStream, bufferLine);
-					resultFile << bufferLine << std::endl;
-				}		
-				///
-				// if idx < start - write to title
-				// if idx > end 
-			}
-			
-			startLine = 3;
-			tapStream.close();
+			resultFile << injectionText << std::endl;
 		}
-		++fileIndx;
+		else
+			resultFile << separatorText << idx + 1<< std::endl;
+
+		for (int lineNumber = topFooterSize; lineNumber < linesCount - botFooterSize; lineNumber++)
+			resultFile << tapFile.fileMapping.at(lineNumber) << std::endl;;
+
+		if (idx == filesCount - 1)
+		{			
+			for (int i = linesCount - botFooterSize; i < linesCount; i++)
+				resultFile << tapFile.fileMapping.at(i) << std::endl;
+
+		}
 	}
+
 	resultFile.close();
 }
 
-int TapCombiner::getLinesInStream(std::ifstream& stream)
-	{
-		std::string buffer{ "" };
-		int ret = 0;
-		while (stream.good())
-		{
-			std::getline(stream, buffer);
-			++ret;
-		}
-		
-		stream.clear();
-		stream.seekg(0, std::ios::beg);
-
-		return ret;
-	}
-
-bool TapCombiner::compareFileNamesDesc(std::string lhs, std::string rhs)
+bool TapCombiner::compareFilesByNameDesc(TapFile lhs, TapFile rhs)
 {
-	lhs = lhs.substr(0, lhs.length() - FILET_TYPE.length());
-	rhs = rhs.substr(0, rhs.length() - FILET_TYPE.length());
+	std::string lhsName = lhs.name;
+	std::string rhsName = rhs.name;
 
-	return std::atoi(lhs.c_str()) < std::atoi(rhs.c_str());
+	lhsName = lhsName.substr(0, lhsName.length() - FILE_TYPE.length());
+	rhsName = rhsName.substr(0, rhsName.length() - FILE_TYPE.length());
+
+	return std::atoi(lhsName.c_str()) < std::atoi(rhsName.c_str());
+
+	return false;
 }

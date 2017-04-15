@@ -5,6 +5,8 @@
 
 const std::string CONFIG_FILE_NAME = "config.xml";
 
+ConfigReader* ConfigReader::m_instance = nullptr;
+
 ConfigReader::ConfigReader()
 	: m_topFooterSize(0)
 	, m_botFooterSize(0)
@@ -20,6 +22,14 @@ ConfigReader::ConfigReader()
 
 ConfigReader::~ConfigReader()
 {
+}
+
+ConfigReader * ConfigReader::getInstance()
+{
+	if (!m_instance)
+		return new ConfigReader();
+
+	return m_instance;
 }
 
 void ConfigReader::readValues()

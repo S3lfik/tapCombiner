@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configs>
+<!-- Separator to be inserted between files --> 
 	<fileSeparator val=";start#"/>
+<!-- Count of first file lines to be inserted at the beginning of the file --> 
 	<topFooterSize val="3"/>
-	<botFooterSize val="3"/>
-	<topInsertionText val="11111\n22222\n33333"/>
+<!-- Count of last file lines to be inserted at the end of the file --> 
+	<botFooterSize val="4"/>
+<!-- Write injection text in a single line separating lines with "\n" (new line symbol)--> 
+	<topInsertionText val="G1Z0F50\nZ1\nZ-0.3\nZ1"/>
 </Configs>
