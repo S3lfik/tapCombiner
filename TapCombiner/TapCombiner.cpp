@@ -10,7 +10,6 @@ TapCombiner::TapCombiner()
 TapCombiner::TapCombiner(const std::string& path)
 	: m_path(path)
 {
-	ConfigReader reader;
 }
 
 TapCombiner::~TapCombiner()
@@ -26,26 +25,10 @@ bool TapCombiner::exec()
 
 		combineFiles();
 	}
-	/** We dont't really need the value, just a type is enough */
-	catch (const int& )
-	{
-		std::cerr << "Directory doesn't exist!\n"
-			<< "Please enter the folder that contains *.tap files. E.g. \"D:/folder\"" << std::endl;
-		return false;
-	}
+
 	catch (const bfs::filesystem_error& e)
 	{
 		std::cerr << e.what() << std::endl;
-		return false;
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << e.what() << std::endl;
-		return false;
-	}
-	catch (...)
-	{
-		std::cerr << "Something has gone really wrong" << std::endl;
 		return false;
 	}
 
@@ -55,7 +38,11 @@ bool TapCombiner::exec()
 bool TapCombiner::readFiles()
 {
 	if (!bfs::exists(m_path) || !bfs::is_directory(m_path))
+	{
+		std::cerr << "Tap folder path error. Check directory and try again!\n"
+			<< "For example: \"D:\\>TapCombiner taps\"" << std::endl;
 		return false;
+	}
 
 	ConfigReader* configReader = ConfigReader::getInstance();
 
@@ -65,8 +52,8 @@ bool TapCombiner::readFiles()
 	{
 		TapFile tapFile;
 		int lineNumber = 0;
-		size_t minimalLineNumber = configReader->getTopFooterSize() +
-			configReader->getBotFooterSize();
+		size_t minimalLineNumber = configReader->getheaderSize() +
+			configReader->getfooterSize();
 
 		tapFile.name = entry.path().filename().string();
 
@@ -105,8 +92,15 @@ bool TapCombiner::readFiles()
 		m_tapFiles.push_back(tapFile);
 	}
 
+	if (m_tapFiles.empty())
+	{
+		std::cerr << "Tap files reading error!" << std::endl;
+		return false;
+	}
+
 	std::sort(m_tapFiles.begin(), m_tapFiles.end(), compareFilesByNameDesc);
 
+	std::cout << "Tap files were read successfully!" << std::endl;
 	return true;
 }
 
@@ -116,8 +110,8 @@ void TapCombiner::combineFiles()
 	std::ofstream resultFile{ (m_path.string() + '/' + RESULT_FILE_NAME).c_str(), std::ios_base::trunc };
 
 	// Config values
-	int topFooterSize = configReader->getTopFooterSize();
-	int botFooterSize = configReader->getBotFooterSize();
+	int headerSize = configReader->getheaderSize();
+	int footerSize = configReader->getfooterSize();
 	std::string injectionText = configReader->getTopInjectonText();
 	std::string separatorText = configReader->getFileSeparator();
 	//
@@ -134,7 +128,7 @@ void TapCombiner::combineFiles()
 		/** If first file - put top footer & top injection*/
 		if (idx == 0)
 		{
-			for (int i = 0; i < topFooterSize; i++)
+			for (int i = 0; i < headerSize; i++)
 				resultFile << tapFile.fileMapping.at(i) << std::endl;
 
 			resultFile << injectionText << std::endl;
@@ -142,12 +136,12 @@ void TapCombiner::combineFiles()
 		else
 			resultFile << separatorText << idx + 1<< std::endl;
 
-		for (int lineNumber = topFooterSize; lineNumber < linesCount - botFooterSize; lineNumber++)
+		for (int lineNumber = headerSize; lineNumber < linesCount - footerSize; lineNumber++)
 			resultFile << tapFile.fileMapping.at(lineNumber) << std::endl;;
 
 		if (idx == filesCount - 1)
 		{			
-			for (int i = linesCount - botFooterSize; i < linesCount; i++)
+			for (int i = linesCount - footerSize; i < linesCount; i++)
 				resultFile << tapFile.fileMapping.at(i) << std::endl;
 
 		}
@@ -165,6 +159,4 @@ bool TapCombiner::compareFilesByNameDesc(TapFile lhs, TapFile rhs)
 	rhsName = rhsName.substr(0, rhsName.length() - FILE_TYPE.length());
 
 	return std::atoi(lhsName.c_str()) < std::atoi(rhsName.c_str());
-
-	return false;
 }

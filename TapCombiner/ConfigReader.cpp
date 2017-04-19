@@ -8,13 +8,13 @@ const std::string CONFIG_FILE_NAME = "config.xml";
 ConfigReader* ConfigReader::m_instance = nullptr;
 
 ConfigReader::ConfigReader()
-	: m_topFooterSize(0)
-	, m_botFooterSize(0)
+	: m_headerSize(0)
+	, m_footerSize(0)
 	, m_separator{""}
 	, m_injectionText{""}
 {
 	pugi::xml_parse_result result = m_doc.load_file(CONFIG_FILE_NAME.c_str(), pugi::parse_minimal);
-	std::cout << "Load result: " << result.description() << std::endl;
+	std::cout << "Config load result: " << result.description() << std::endl;
 
 	readValues();
 }
@@ -27,7 +27,7 @@ ConfigReader::~ConfigReader()
 ConfigReader * ConfigReader::getInstance()
 {
 	if (!m_instance)
-		return new ConfigReader();
+		m_instance = new ConfigReader();
 
 	return m_instance;
 }
@@ -35,20 +35,20 @@ ConfigReader * ConfigReader::getInstance()
 void ConfigReader::readValues()
 {
 	pugi::xml_node root = m_doc.document_element();
-	std::cout << root.name() << std::endl;
+	pugi::xml_attribute atribute;
 	auto nodes = root.children();
 	for (auto itr = nodes.begin(); itr != nodes.end(); ++itr)
 	{
-		pugi::xml_attribute atribute = itr->first_attribute();
+		atribute = itr->first_attribute();
 		const std::string stringname{ itr->name() };
 
-		if (!stringname.compare("topFooterSize"))
+		if (!stringname.compare("headerSize"))
 		{
-			m_topFooterSize = atribute.as_int();
+			m_headerSize = atribute.as_int();
 		}
-		else if (!stringname.compare("botFooterSize"))
+		else if (!stringname.compare("footerSize"))
 		{
-			m_botFooterSize = atribute.as_int();
+			m_footerSize = atribute.as_int();
 		}
 		else if (!stringname.compare("fileSeparator"))
 		{
