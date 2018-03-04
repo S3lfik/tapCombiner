@@ -7,4 +7,4 @@ A project to solve private task - to combine several .tap files into one .cnc ma
 
 Project seems finished, but dependencies are strong to the local machine use.
 It uses pugixml 1.8.0 for config file management (it stores size of header and footer, injection and separator texts)
-It also uses boost::filesystem to iterate through passed via path directory.
+It also uses boost::filesystem to iterate through files passed via path directory.
